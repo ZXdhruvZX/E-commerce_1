@@ -5,42 +5,126 @@ import Modal from "../../components/modal/Modal";
 import { useDispatch, useSelector } from "react-redux";
 import { deleteFromCart } from "../../redux/cartSlice";
 import { toast } from "react-toastify";
+import { addDoc, collection } from "firebase/firestore";
+import { fireDB } from "../../firebase/FirebaseConfig";
 
 function Cart() {
   const context = useContext(myContext);
   const { mode } = context;
 
   const dispatch = useDispatch();
+
   const cartItems = useSelector((state) => state.cart);
-  // console.log(cartItems)
+  console.log(cartItems);
 
-  const [totalAmount, setTotalAmount] = useState(0);
-  useEffect(() => {
-    let temp = 0;
-    cartItems.forEach((cartItem) => {
-      temp = temp + parseInt(cartItem.price);
-    });
-    setTotalAmount(temp);
-    // console.log(temp)
-  }, [cartItems]);
-
-  const shipping = parseInt(100);
-  const grandTotal = shipping + totalAmount;
-
-  // add to cart
   const deleteCart = (item) => {
     dispatch(deleteFromCart(item));
-    toast.success("delete g cart");
+    toast.success("Delete cart");
   };
 
   useEffect(() => {
     localStorage.setItem("cart", JSON.stringify(cartItems));
   }, [cartItems]);
 
+  const [totalAmout, setTotalAmount] = useState(0);
+
+  useEffect(() => {
+    let temp = 0;
+    cartItems.forEach((cartItem) => {
+      temp = temp + parseInt(cartItem.price);
+    });
+    setTotalAmount(temp);
+    console.log(temp);
+  }, [cartItems]);
+
+  const shipping = parseInt(100);
+
+  const grandTotal = shipping + totalAmout;
+  // console.log(grandTotal)
+
+  /**========================================================================
+   *!                           Payment Intigration
+   *========================================================================**/
+
+  const [name, setName] = useState("");
+  const [address, setAddress] = useState("");
+  const [pincode, setPincode] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
+
+  const buyNow = async () => {
+    if (name === "" || address == "" || pincode == "" || phoneNumber == "") {
+      return toast.error("All fields are required", {
+        position: "top-center",
+        autoClose: 1000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+        theme: "colored",
+      });
+    }
+
+    const addressInfo = {
+      name,
+      address,
+      pincode,
+      phoneNumber,
+      date: new Date().toLocaleString("en-US", {
+        month: "short",
+        day: "2-digit",
+        year: "numeric",
+      }),
+    };
+
+    var options = {
+      key: "",
+      key_secret: "",
+      amount: parseInt(grandTotal * 100),
+      currency: "INR",
+      order_receipt: "order_rcptid_" + name,
+      name: "E-Bharat",
+      description: "for testing purpose",
+      handler: function (response) {
+        console.log(response);
+        toast.success("Payment Successful");
+
+        const paymentId = response.razorpay_payment_id;
+
+        const orderInfo = {
+          cartItems,
+          addressInfo,
+          date: new Date().toLocaleString("en-US", {
+            month: "short",
+            day: "2-digit",
+            year: "numeric",
+          }),
+          email: JSON.parse(localStorage.getItem("user")).user.email,
+          userid: JSON.parse(localStorage.getItem("user")).user.uid,
+          paymentId,
+        };
+
+        try {
+          const orderRef = collection(fireDB, "order");
+          addDoc(orderRef, orderInfo);
+        } catch (error) {
+          console.log(error);
+        }
+      },
+
+      theme: {
+        color: "#3399cc",
+      },
+    };
+
+    var pay = new window.Razorpay(options);
+    pay.open();
+    console.log(pay);
+  };
   return (
     <Layout>
       <div
-        className="h-screen bg-gray-100 pt-5 "
+        className="h-screen bg-gray-100 pt-5 mb-[60%] "
         style={{
           backgroundColor: mode === "dark" ? "#282c34" : "",
           color: mode === "dark" ? "white" : "",
@@ -50,6 +134,7 @@ function Cart() {
         <div className="mx-auto max-w-5xl justify-center px-6 md:flex md:space-x-6 xl:px-0 ">
           <div className="rounded-lg md:w-2/3 ">
             {cartItems.map((item, index) => {
+              const { title, price, description, imageUrl } = item;
               return (
                 <div
                   className="justify-between mb-6 rounded-lg border  drop-shadow-xl bg-white p-6  sm:flex  sm:justify-start"
@@ -59,7 +144,7 @@ function Cart() {
                   }}
                 >
                   <img
-                    src={item.imageUrl}
+                    src={imageUrl}
                     alt="product-image"
                     className="w-full rounded-lg sm:w-40"
                   />
@@ -69,19 +154,19 @@ function Cart() {
                         className="text-lg font-bold text-gray-900"
                         style={{ color: mode === "dark" ? "white" : "" }}
                       >
-                        {item.title}
+                        {title}
                       </h2>
                       <h2
                         className="text-sm  text-gray-900"
                         style={{ color: mode === "dark" ? "white" : "" }}
                       >
-                        {item.description}
+                        {description}
                       </h2>
                       <p
                         className="mt-1 text-xs font-semibold text-gray-700"
                         style={{ color: mode === "dark" ? "white" : "" }}
                       >
-                        ₹{item.price}
+                        ₹{price}
                       </p>
                     </div>
                     <div
@@ -127,7 +212,7 @@ function Cart() {
                 className="text-gray-700"
                 style={{ color: mode === "dark" ? "white" : "" }}
               >
-                ₹{totalAmount}
+                ₹{totalAmout}
               </p>
             </div>
             <div className="flex justify-between">
@@ -161,7 +246,18 @@ function Cart() {
                 </p>
               </div>
             </div>
-            <Modal />
+            {/* <Modal  /> */}
+            <Modal
+              name={name}
+              address={address}
+              pincode={pincode}
+              phoneNumber={phoneNumber}
+              setName={setName}
+              setAddress={setAddress}
+              setPincode={setPincode}
+              setPhoneNumber={setPhoneNumber}
+              buyNow={buyNow}
+            />
           </div>
         </div>
       </div>
