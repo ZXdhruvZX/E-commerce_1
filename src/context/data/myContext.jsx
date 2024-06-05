@@ -22,6 +22,7 @@ export const MyProvider = ({ children }) => {
 
   const [products, setProducts] = useState([]);
   const [editingProduct, setEditingProduct] = useState(null);
+  const [loading, setLoading] = useState(false);
 
   const addProduct = async () => {
     try {
@@ -97,6 +98,8 @@ export const MyProvider = ({ children }) => {
         updateProduct,
         editingProduct,
         setEditingProduct,
+        loading,
+        setLoading,
       }}
     >
       {children}

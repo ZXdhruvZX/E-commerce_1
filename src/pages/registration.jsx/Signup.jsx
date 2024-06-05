@@ -12,8 +12,7 @@ function Signup() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-  const context = useContext(myContext);
-  const { loading, setLoading } = context;
+  const { loading, setLoading } = useContext(myContext);
 
   const signup = async () => {
     setLoading(true);
@@ -24,6 +23,7 @@ function Signup() {
 
     try {
       const users = await createUserWithEmailAndPassword(auth, email, password);
+      const idToken = await users.user.getIdToken();
 
       const user = {
         name: name,
@@ -33,14 +33,47 @@ function Signup() {
       };
       const userRef = collection(fireDB, "users");
       await addDoc(userRef, user);
+
+      // Perform account lookup
+      await lookupAccount(idToken);
+
       toast.success("Signup Successfully");
       setName("");
       setEmail("");
       setPassword("");
     } catch (error) {
-      console.log(error);
+      console.error("Signup error:", error);
+      toast.error("Signup failed. Please try again.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const lookupAccount = async (idToken) => {
+    const url =
+      "https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=AIzaSyCIWLPjYopmN43bYXsTc8FlgueV7qnKFsM";
+
+    const body = {
+      idToken: idToken,
+    };
+
+    try {
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
+      });
+
+      if (!response.ok) {
+        throw new Error("Request failed");
+      }
+
+      const data = await response.json();
+      console.log("Lookup successful:", data);
+    } catch (error) {
+      console.error("Lookup error:", error);
     }
   };
 
