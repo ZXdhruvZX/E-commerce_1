@@ -28,6 +28,9 @@ export const MyProvider = ({ children }) => {
     return savedUser ? JSON.parse(savedUser) : null;
   });
 
+  const [order, setOrder] = useState([]);
+  const [loadingOrders, setLoadingOrders] = useState(false);
+
   const addProduct = async () => {
     setLoading(true);
     try {
@@ -99,8 +102,25 @@ export const MyProvider = ({ children }) => {
     }
   };
 
+  const fetchOrders = async () => {
+    setLoadingOrders(true);
+    try {
+      const querySnapshot = await getDocs(collection(fireDB, "orders"));
+      const ordersList = querySnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+      setOrder(ordersList);
+    } catch (error) {
+      console.error("Error fetching orders: ", error); // Add error logging
+    } finally {
+      setLoadingOrders(false);
+    }
+  };
+
   useEffect(() => {
     fetchProducts();
+    fetchOrders();
   }, []);
 
   return (
@@ -118,6 +138,9 @@ export const MyProvider = ({ children }) => {
         setLoading,
         user,
         setUser,
+        order,
+        loadingOrders,
+        fetchOrders,
       }}
     >
       {children}
